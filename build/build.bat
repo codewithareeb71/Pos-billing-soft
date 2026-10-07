@@ -8,7 +8,7 @@ rem    build\Setup_ALSHAN_POS_SYSTEM_v1.0.0.exe      (installer, if ISCC.exe is 
 rem
 rem  Requirements:  Python 3.11+, pip install -r requirements.txt pyinstaller
 rem ===========================================================================
-setlocal
+setlocal EnableDelayedExpansion
 cd /d "%~dp0.."
 
 echo [1/5] Checking dependencies...
@@ -27,6 +27,14 @@ python tests\ui_smoke_test.py
 if errorlevel 1 goto :failed
 
 echo [4/5] Building the application with PyInstaller...
+rem The page modules are loaded at runtime with importlib.import_module(),
+rem which PyInstaller cannot detect on its own - without the list below the
+rem packaged app shows "This module could not be opened" on every screen.
+rem Enumerating the folder means any future page is picked up automatically.
+set "PAGES="
+for %%f in ("app\ui\pages\*.py") do (
+    if /i not "%%~nf"=="__init__" set "PAGES=!PAGES! --hidden-import app.ui.pages.%%~nf"
+)
 rem --specpath build\ makes PyInstaller resolve relative paths from the spec
 rem folder, so icon and paths are passed as absolute values here.
 python -m PyInstaller --noconfirm --clean --windowed ^
@@ -40,6 +48,7 @@ python -m PyInstaller --noconfirm --clean --windowed ^
   --hidden-import barcode.writer ^
   --hidden-import app.services ^
   --hidden-import app.ui.pages ^
+  !PAGES! ^
   run.py
 if errorlevel 1 goto :failed
 

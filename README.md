@@ -57,12 +57,20 @@ Requirements: **Python 3.11+**, `PySide6`, `python-barcode`.
 ## 3. Tests
 
 ```bat
-python tests\smoke_test.py       :: business layer  (50 checks)
-python tests\ui_smoke_test.py    :: every screen, off-screen Qt (26 checks)
+python tests\smoke_test.py           :: business layer  (53 checks)
+python tests\ui_smoke_test.py        :: every screen, off-screen Qt (27 checks)
+python tests\e2e_signin_test.py      :: wizard -> sign-in -> window (11 checks)
 ```
 
-Both suites write to a temporary data folder (`ALSHAN_DATA_DIR`) and never touch
-your real database.
+All three suites write to a temporary data folder (`ALSHAN_DATA_DIR`) and never
+touch your real database.
+
+**Sign-in troubleshooting**
+
+* Usernames are case-insensitive (`Admin` = `admin`); passwords are not.
+* After 8 failed attempts within 5 minutes the account is locked for 5 minutes.
+* If the app closes unexpectedly it now shows an error dialog instead of
+  vanishing - the full report is in `%LOCALAPPDATA%\AlshanPOS\logs\app.log`.
 
 ---
 

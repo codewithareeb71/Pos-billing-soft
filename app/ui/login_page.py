@@ -155,6 +155,7 @@ class LoginDialog(QDialog):
             self._reset_button()
             return
         self._session = session
+        self._reset_button()          # keep the dialog in a sane state
         self.accept()
 
     def _reset_button(self) -> None:

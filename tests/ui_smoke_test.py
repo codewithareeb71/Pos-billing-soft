@@ -65,6 +65,33 @@ def main() -> int:
     session = ctx.login("admin", "admin")
     check("signed in", ctx.session is not None, session.username)
 
+    # ------------------------------------------------- sign-in regression
+    # Regression: with PySide6 6.11 a successful sign-in crashed in main.py
+    # ('LoginDialog' object has no attribute 'Accepted'), so correct
+    # credentials never opened any page.
+    def login_dialog_flow():
+        from PySide6.QtWidgets import QDialog
+
+        from app.ui.login_page import LoginDialog
+
+        wrong = LoginDialog(ctx)
+        wrong.username.setText("admin")
+        wrong.password.setText("definitely-wrong-password")
+        wrong.attempt_login()
+        assert wrong.result() != QDialog.DialogCode.Accepted, \
+            "wrong password must not sign in"
+        assert not wrong.error.isHidden(), "error message not shown"
+        assert "incorrect" in wrong.error.text().lower(), wrong.error.text()
+
+        good = LoginDialog(ctx)
+        good.username.setText("ADMIN")       # case-insensitive now
+        good.password.setText("admin")
+        good.attempt_login()
+        assert good.result() == QDialog.DialogCode.Accepted, \
+            "correct credentials must accept the login dialog"
+
+    run("login dialog: wrong rejected / correct accepted", login_dialog_flow)
+
     product_ids = []
 
     def seed():

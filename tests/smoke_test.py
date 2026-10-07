@@ -42,6 +42,13 @@ def check(name: str, condition: bool, detail: str = "") -> None:
     print(f"{'PASS' if condition else 'FAIL'}  {name}" + (f"  [{detail}]" if detail else ""))
 
 
+def scalar_count(db, sql: str, params: tuple = ()) -> int:
+    from app.core.db import scalar
+
+    with db.read() as conn:
+        return int(scalar(conn, sql, params, 0))
+
+
 def main() -> int:
     db = Database(config.DB_PATH)
     db.initialize(create_default_admin=True)
@@ -227,6 +234,27 @@ def main() -> int:
         check("cashier cannot void", False)
     except AppError:
         check("cashier cannot void", True)
+
+    # --- login hardening (regression: sign-in crash + lockout) ----------
+    relogin = auth.login("CASHIER1", "cashier123")
+    check("login is case-insensitive", relogin.username == "cashier1")
+
+    max_attempts = settings.get_int("security.lockout_attempts",
+                                    config.MAX_LOGIN_ATTEMPTS)
+    for _ in range(max_attempts):
+        try:
+            auth.login("ghost_till_user", "wrong-password-9")
+        except AppError:
+            pass
+    try:
+        auth.login("ghost_till_user", "wrong-password-9")
+        check("lockout engages after repeated failures", False, "not locked")
+    except AppError as exc:
+        check("lockout engages after repeated failures",
+              "Too many failed" in str(exc), str(exc))
+    check("failed attempts persisted",
+          scalar_count(auth.db, "SELECT COUNT(*) FROM login_attempts "
+                                "WHERE username = 'ghost_till_user'") >= max_attempts)
 
     # --- backup / restore ------------------------------------------------
     target = backup.create_backup(TMP / "backups", kind="manual")
